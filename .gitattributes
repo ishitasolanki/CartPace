@@ -1,0 +1,16 @@
+# Normalise text to LF in the repository, check out native on Windows.
+* text=auto
+
+# Binary — never line-ending convert, or the file is corrupted on checkout.
+*.pdf binary
+*.png binary
+*.jpg binary
+*.pt binary
+*.pth binary
+*.pkl binary
+*.db binary
+*.sqlite3 binary
+*.ipynb binary
+
+# Always LF, regardless of platform.
+*.sh text eol=lf

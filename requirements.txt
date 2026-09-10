@@ -1,0 +1,9 @@
+# Dependencies are added in the phase that first needs them, not up front.
+# Phase 1 (controller + sim + tests) needs only these.
+
+numpy==2.3.3
+pytest==8.3.4
+
+# Added in W2 (backend):   fastapi, uvicorn, sqlalchemy, pydantic,
+#                          python-jose[cryptography], passlib[bcrypt], python-dotenv
+# Added in W4 (CXR arm):   torch, torchvision, scikit-learn
