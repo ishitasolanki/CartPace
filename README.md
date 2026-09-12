@@ -22,6 +22,7 @@ Making those offsets identifiable requires referring some patients below the thr
 |---|---|
 | `project.md` | Requirements, objective, architecture, acceptance criteria, out-of-scope, riskiest assumptions |
 | `docs/CartPace-Build-Specification.pdf` | Full build plan, Phase 0–13, each with an exit gate; patent strategy; risk register |
+| `docs/prior-art.md` | W0 clearance: element-by-element prior art analysis and the proceed-narrowed decision |
 | `docs/environment.md` | Verified toolchain versions |
 
 ## Setup

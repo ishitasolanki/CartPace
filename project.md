@@ -284,7 +284,9 @@ Dependency direction is strictly one-way: `controller/` and `sim/` depend on num
 
 **R3 — IPW estimates may be too high-variance to steer on**, and the problem worsens split across K strata rather than pooled. *Mitigation: weight clipping, per-stratum ESS guard, coarse strata, variance reported with every certificate; gate G5 tests it.*
 
-**R4 — Prior art may anticipate the claim.** Contextual Bandits with Knapsacks addresses budget-constrained online decisions via primal-dual thresholding. *Mitigation: clearance completed before any implementation code; `docs/prior-art.md`.*
+**R4 — Prior art may anticipate the claim.** **Status: cleared, narrowed (2026-09-12).** Contextual Bandits with Knapsacks anticipates budget-coupled thresholding, Counterfactual Risk Minimisation anticipates propensity-logged exploration, and Adaptive Conformal Inference anticipates the conformal scalar. None may be claimed standalone. No reference was found anticipating the coupling — exploration financed from the depleting resource under allocation. *See `docs/prior-art.md` for the element-by-element analysis and the residual action items.*
+
+**R5 — Reject inference may anticipate the recalibration element.** Surfaced during W0 clearance and not previously identified. Credit scoring has corrected models for selectively unobserved (rejected) populations for decades, using reweighting, augmentation and extrapolation. Correcting a scoring model from feedback censored by the model's own past decisions is therefore a known, named, mature technique, and cannot be claimed as novel in the abstract. *Mitigation: the specification must distinguish on three specific grounds — single-pass streaming in constant memory with no retained calibration set; operation under a hard per-period physical budget that cannot be replenished; and the exploration-funding coupling, which has no analogue in lending. Read two reject-inference surveys before drafting so the distinction is stated precisely rather than asserted.*
 
 ## 18. Acceptance criteria / Definition of Done
 
