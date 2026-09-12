@@ -7,3 +7,16 @@ pytest==8.3.4
 # Added in W2 (backend):   fastapi, uvicorn, sqlalchemy, pydantic,
 #                          python-jose[cryptography], passlib[bcrypt], python-dotenv
 # Added in W4 (CXR arm):   torch, torchvision, scikit-learn
+
+# W2 backend
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+sqlalchemy==2.0.36
+pydantic==2.11.4
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+# passlib 1.7.4 predates bcrypt's 4.1 API change (__about__ removed) and
+# throws "password cannot be longer than 72 bytes" on hash(). Pin bcrypt<4.1
+# until passlib publishes a fix.
+python-dotenv==1.0.1
