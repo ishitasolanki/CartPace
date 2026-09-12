@@ -23,6 +23,12 @@ got both wrong in instructive ways:
   allocation. Memory and latency therefore never run in the same pass.
 
 Run: python bench/footprint.py
+
+Run it in isolation, not alongside another CPU-bound process. Confirmed by
+direct measurement: with spike_p2.py running concurrently, mean latency read
+71.3 -> 155.5us and failed the flatness check; re-run alone immediately after,
+same machine, same clone, it read 58.4 -> 76.2us and passed. The controller was
+not the variable -- contention for the CPU was.
 """
 
 import gc

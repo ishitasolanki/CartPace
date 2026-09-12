@@ -32,6 +32,7 @@ Making those offsets identifiable requires referring some patients below the thr
 | `docs/CartPace-Build-Specification.pdf` | Full build plan, Phase 0–13, each with an exit gate; patent strategy; risk register |
 | `docs/prior-art.md` | W0 clearance: element-by-element prior art analysis and the proceed-narrowed decision |
 | `docs/p2-findings.md` | **The gate result.** What works, what does not, and the four bugs found |
+| `docs/clean-install.md` | Clean-clone verification, AC12 |
 | `modular-plan.md` | Module map and interfaces, as built, with divergences from the plan |
 | `docs/environment.md` | Verified toolchain versions |
 
@@ -42,10 +43,16 @@ python -m venv .venv
 . .venv/Scripts/activate      # Windows;  source .venv/bin/activate on Unix
 pip install -r requirements.txt
 cp .env.example .env          # then generate JWT_SECRET as the file describes
-pytest                        # 91 tests
+pytest                        # 116 tests
 python spike_p2.py            # the gate
-python bench/footprint.py     # memory and latency evidence
+python bench/footprint.py     # memory and latency evidence -- run alone, not
+                               # alongside another CPU-bound process
+python -m backend.seed        # seeds nurse / supervisor demo accounts
+uvicorn backend.main:app      # starts the API on :8000
 ```
+
+Verified on a genuinely fresh clone of the remote with a new venv --
+see `docs/clean-install.md`.
 
 No GPU required. No model weights required — the synthetic scorer is the default, and absent weights fall back to it rather than failing.
 

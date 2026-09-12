@@ -20,3 +20,9 @@ bcrypt==4.0.1
 # throws "password cannot be longer than 72 bytes" on hash(). Pin bcrypt<4.1
 # until passlib publishes a fix.
 python-dotenv==1.0.1
+httpx==0.28.1
+pytest-timeout==2.3.1
+# httpx and pytest-timeout are test-only (TestClient's WS support, and a
+# guard against a test hanging on a background-task bug rather than failing).
+# Recorded in the main file rather than a separate requirements-dev.txt: this
+# project has no CI split yet where that distinction would pay for itself.

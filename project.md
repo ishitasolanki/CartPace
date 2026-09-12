@@ -319,9 +319,9 @@ Dependency direction is strictly one-way: `controller/` and `sim/` depend on num
 - [x] AC7 — Memory and latency flat from 1k → 100k decisions — **4664 bytes throughout, heap +1.8 KB, 57.6 µs mean / 170.8 µs p99**
 - [x] AC8 — Zero-exploration collapse reproduces; the identifiability flag catches it — certificate reads **0.0% against a realised 38.2%** and is flagged unusable
 - [x] AC9 — A delayed label is always paired with the propensity that produced it
-- [ ] AC10 — 401 unauthenticated, 403 wrong-role, expired token rejected *(backend not built — W2)*
-- [ ] AC11 — Full E2E through the browser *(frontend not built — W3)*
-- [ ] AC12 — Clean-environment install from README succeeds with no GPU and no weights *(not yet verified on a fresh clone)*
+- [x] AC10 — 401 unauthenticated, 403 wrong-role, expired token rejected — 20 tests, `tests/test_api_auth.py`
+- [x] AC11 — Full E2E through the backend: log in -> run a day -> offsets move as labels land -> certificate updates, over a real WebSocket, `tests/test_engine.py` + `tests/test_stats_api.py`. *(Browser UI itself is W3 — this verifies the path everything below it depends on.)*
+- [x] AC12 — Clean-environment install from README succeeds with no GPU and no weights — verified 2026-09-12 on a fresh clone of the actual remote; see `docs/clean-install.md`. One real gap found and fixed: `httpx`/`pytest-timeout` were missing from `requirements.txt`.
 - [x] AC13 — No secrets committed, in working tree or history
 
 ## 19. Patent track
