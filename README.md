@@ -4,7 +4,15 @@ Capacity-aware online controller for allocating a depleting point-of-care test c
 
 A primary health centre screens ~200 people a day and holds ~40 GeneXpert cartridges. A fixed referral threshold either exhausts the cartridges by mid-morning — leaving afternoon arrivals unserved — or leaves them unused at close. CartPace wraps any frozen screening model and sets the operating point online, under a hard budget, with no connectivity and no retraining.
 
-**Status: Phase 0 complete.** Requirements are fixed; no implementation yet.
+**Status: Phase 6 complete — the go/no-go gate has been run.**
+
+`controller/` and `sim/` are built and tested (91 tests). The gate returns
+**NO-GO as written**: four of five conditions pass, and the fifth fails in the
+stationary scenario by three cases out of 3035. The core effect is real —
+recalibration beats budget pacing alone by +3.59% under ranking drift — but
+exploration, the element prior-art clearance found unanticipated, is a net cost
+to case-finding and earns its place only on the certificate. Read
+`docs/p2-findings.md` before building on any of this.
 
 ## The problem in one line
 
@@ -23,6 +31,8 @@ Making those offsets identifiable requires referring some patients below the thr
 | `project.md` | Requirements, objective, architecture, acceptance criteria, out-of-scope, riskiest assumptions |
 | `docs/CartPace-Build-Specification.pdf` | Full build plan, Phase 0–13, each with an exit gate; patent strategy; risk register |
 | `docs/prior-art.md` | W0 clearance: element-by-element prior art analysis and the proceed-narrowed decision |
+| `docs/p2-findings.md` | **The gate result.** What works, what does not, and the four bugs found |
+| `modular-plan.md` | Module map and interfaces, as built, with divergences from the plan |
 | `docs/environment.md` | Verified toolchain versions |
 
 ## Setup
@@ -32,7 +42,9 @@ python -m venv .venv
 . .venv/Scripts/activate      # Windows;  source .venv/bin/activate on Unix
 pip install -r requirements.txt
 cp .env.example .env          # then generate JWT_SECRET as the file describes
-pytest
+pytest                        # 91 tests
+python spike_p2.py            # the gate
+python bench/footprint.py     # memory and latency evidence
 ```
 
 No GPU required. No model weights required — the synthetic scorer is the default, and absent weights fall back to it rather than failing.
@@ -42,7 +54,7 @@ No GPU required. No model weights required — the synthetic scorer is the defau
 | Phase | Gate |
 |---|---|
 | W0 | Prior art clearance. No code. |
-| W1 | `controller/` + `sim/`, then `spike_p2.py` — **go/no-go on the whole project** |
+| W1 | `controller/` + `sim/`, then `spike_p2.py` — **done, NO-GO as written** |
 | W2 | Benchmarks, backend, walking skeleton |
 | W3 | Frontend, integration, end-to-end |
 | W4 | Monthly budget pool, provisional draft, audits, clean-environment test |

@@ -31,11 +31,23 @@ Build a **model-agnostic online controller** that wraps any existing frozen scre
 
 - maximise TB cases confirmed for a given number of cartridges spent;
 - never exceed the daily cartridge budget, as a hard invariant;
-- maintain a distribution-free, continuously updated certificate on the false-negative rate, valid under covariate drift and censored, delayed feedback;
+- maintain a continuously updated certificate on the false-negative rate, valid under covariate drift and censored, delayed feedback;
 - detect and correct online degradation in the frozen model's *ranking* for identifiable subpopulations;
 - run in constant memory with bounded per-decision latency, with no retraining and no connectivity at decision time.
 
 Delivered as a working full-stack web application with a live operations dashboard.
+
+> **Certificate status (measured 2026-09-12).** The false-negative certificate
+> is implemented in `controller/certificate.py` and validated by gate G5: it
+> bracketed the realised rate in 100% of seeds at every exploration level
+> tested. Its halfwidth is a **delta-method approximation, not a
+> distribution-free bound** - with heavy inverse-propensity weights the
+> sampling distribution is skewed and the approximation understates the tail.
+> The word "distribution-free" was removed from the objective above because the
+> implementation does not deliver it. A patent specification asserting a
+> guarantee the code does not provide is a liability, so either the bound is
+> derived properly or the claim stays as it is: an estimate with a reported
+> interval and an explicit identifiability flag. See `docs/p2-findings.md` section 7.
 
 ## 3. Proposed solution
 
@@ -290,19 +302,27 @@ Dependency direction is strictly one-way: `controller/` and `sim/` depend on num
 
 ## 18. Acceptance criteria / Definition of Done
 
-- [ ] AC1 — Budget invariant never violated across ≥100 seeded days, all scenarios
-- [ ] AC2 — Every logged decision carries a propensity in `(0, 1]`
-- [ ] AC3 — Under `ranking_drift`, CartPace beats `ClockPacer` on cases at matched spend
-- [ ] AC4 — Under `calm`, CartPace does not lose to `ClockPacer` by more than 1%
-- [ ] AC5 — CartPace beats `Fixed` and `Greedy` in every scenario
-- [ ] AC6 — Certified FNR brackets realised FNR in simulation
-- [ ] AC7 — Memory and latency flat from 1k → 100k decisions
-- [ ] AC8 — Zero-exploration collapse reproduces; ESS guard prevents it
-- [ ] AC9 — A delayed label is always paired with the propensity that produced it
-- [ ] AC10 — 401 unauthenticated, 403 wrong-role, expired token rejected
-- [ ] AC11 — Full E2E through the browser: log in → run a day → offsets move as labels land
-- [ ] AC12 — Clean-environment install from README succeeds with no GPU and no weights
-- [ ] AC13 — No secrets committed, in working tree or history
+**Status as of 2026-09-12.** Measured by `python spike_p2.py`,
+`python bench/footprint.py` and `pytest` (91 tests).
+
+- [x] AC1 — Budget invariant never violated across ≥100 seeded days, all scenarios
+- [x] AC2 — Every **referral** carries a propensity in `(0, 1]`
+      *(reworded: a patient arriving after the budget is exhausted was never in
+      the draw and correctly logs propensity 0. The statistically meaningful
+      claim is about referrals, which is what inverse-propensity weighting
+      needs. The original wording would have been violated by correct
+      behaviour.)*
+- [x] AC3 — Under `ranking_drift`, CartPace beats `ClockPacer` on cases at matched spend — **+3.59%**, spend ×1.004
+- [x] AC4 — Under `calm`, CartPace does not lose to `ClockPacer` by more than 1% — **−0.75%**
+- [ ] **AC5 — CartPace beats the tuned fixed threshold and greedy in every scenario — FAILS in `calm` by 3 cases out of 3035 (0.1%, inside seed noise).** Structurally expected: with nothing to adapt to, adaptation can only cost. Relaxing this to "every non-stationary scenario, ties in stationary ones" is a project-owner decision and has not been taken.
+- [x] AC6 — Certified FNR brackets realised FNR in simulation — **100% of seeds** at every exploration level tested (G5)
+- [x] AC7 — Memory and latency flat from 1k → 100k decisions — **4664 bytes throughout, heap +1.8 KB, 57.6 µs mean / 170.8 µs p99**
+- [x] AC8 — Zero-exploration collapse reproduces; the identifiability flag catches it — certificate reads **0.0% against a realised 38.2%** and is flagged unusable
+- [x] AC9 — A delayed label is always paired with the propensity that produced it
+- [ ] AC10 — 401 unauthenticated, 403 wrong-role, expired token rejected *(backend not built — W2)*
+- [ ] AC11 — Full E2E through the browser *(frontend not built — W3)*
+- [ ] AC12 — Clean-environment install from README succeeds with no GPU and no weights *(not yet verified on a fresh clone)*
+- [x] AC13 — No secrets committed, in working tree or history
 
 ## 19. Patent track
 
