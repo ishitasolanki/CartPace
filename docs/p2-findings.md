@@ -15,7 +15,9 @@ three cases out of 3035.
 | G2 | `calm` loses ≤ 1% | **PASS** (−0.75%) |
 | G3 | Beats `Fixed` and `Greedy` in every scenario | **FAIL** — see below |
 | G4 | Exploration ≤ 10% of cartridges | **PASS** (1.2%) |
-| — | Exploration pays for itself | **NO** — see below |
+| G5 | Certificate brackets the realised FNR | **PASS** (100% of seeds) |
+| — | Exploration pays for itself *in cases caught* | **NO** — §3 |
+| — | Exploration is required *for the certificate* | **YES** — §3a |
 
 ## Headline results
 
@@ -138,6 +140,52 @@ Note also that at drift ≥ 4.0 the contribution collapses entirely regardless o
 exploration. Recalibration cannot track drift that outruns the evidence it can
 gather in 200 days.
 
+## 3a. G5: what exploration actually buys
+
+Measured after the fact, and it changes the conclusion of §3 without
+contradicting it. On `ranking_drift`, 5 seeds, comparing the certificate
+against the realised false-negative rate the simulator knows and the controller
+never sees:
+
+| p_floor | explore_frac | realised FNR | certified | halfwidth | covers | usable |
+|---|---|---|---|---|---|---|
+| 0.002 | 0.005 | 38.3% | 40.7% | ±28.4% | 100% | yes |
+| 0.002 | 0.020 | 38.7% | 37.6% | ±21.5% | 100% | yes |
+| 0.010 | 0.020 | 39.1% | 36.6% | ±13.5% | 100% | yes |
+| 0.020 | 0.050 | 40.1% | 40.2% | **±9.4%** | 100% | yes |
+| **0** | **0** | **38.2%** | **0.0%** | ±0.0% | **0%** | **no** |
+
+Two things fall out.
+
+**Exploration buys precision, in a clean dose-response.** The halfwidth tightens
+monotonically from ±28.4% to ±9.4% as exploration rises from 0.5% to 5% of the
+budget. That is the same axis along which §3 shows cases being lost, so the
+trade is now quantified in both directions rather than assumed: roughly 1.8% of
+cases caught buys a threefold tightening of the certificate.
+
+**Without exploration the certificate is not wide, it is wrong.** It reports
+exactly 0.0% against a realised 38.2%. Every referral has propensity 1, so every
+term in the Horvitz-Thompson numerator is `y * (1 - 1) = 0`, and the estimator
+returns zero for any input whatsoever. Zero is also the *best possible* answer,
+so a controller reading it concludes it is performing perfectly. This is the
+divergence failure in its exact form.
+
+The `identifiable` flag exists for this state and is what separates a degraded
+certificate from a silently false one. It is asserted in
+`tests/test_certificate.py`, including on a real run.
+
+### Consequence for the claim
+
+This relocates E6 rather than reviving it. Exploration financed from the
+allocated budget is **not** supportable as a case-finding improvement — §3
+measures it as a net cost, and that framing should be abandoned. It **is**
+supportable as the thing that makes a false-negative certificate exist at all,
+with a measured price and a measured precision curve.
+
+That is a narrower claim than the one W0 cleared, and it is a measurement
+guarantee rather than a throughput guarantee. But unlike the throughput
+framing, the evidence supports it.
+
 ## 4. What this does to the patent position
 
 Combining W0 and P2:
@@ -160,6 +208,13 @@ and reject-inference literature.
 
 ## 5. Options
 
+> **Updated after G5.** Options 1 and 2 below are no longer alternatives —
+> the measured position is that recalibration provides the case-finding effect
+> *without* exploration, and exploration provides the certificate *without*
+> improving case-finding. They are two separable contributions with separate
+> evidence, and the specification should treat them that way rather than
+> presenting one coupled mechanism.
+
 1. **Relax G3 and proceed on the recalibration effect.** The effect is real,
    reproducible and gated. Accept that the patent claim narrows to the specific
    mechanism — deficit-directed stratified probing, constant memory, on-device —
@@ -170,9 +225,9 @@ and reject-inference literature.
 2. **Keep exploration and claim the certificate, not the throughput.** A
    false-negative certificate over never-referred patients is a *marginal*
    quantity and genuinely does require exploration and propensity weighting.
-   It was deferred in this spike (gate G5 unmeasured). This is the honest home
-   for E6 — but it must be claimed as a measurement guarantee, not as a
-   case-finding improvement, because the numbers above show it is not one.
+   **Now measured — see §3a.** This is the honest home for E6, and it must be
+   claimed as a measurement guarantee rather than a case-finding improvement,
+   because the numbers above show it is not one.
 
 3. **Pivot to the monthly budget pool.** The `project.md` §16 fallback. Lifting
    the budget from daily to monthly makes it non-binding within a day, which is
@@ -211,9 +266,13 @@ which is worth noting: none of them would have raised an error.
 
 ## 7. What was not measured
 
-- **G5, certificate bracketing.** The false-negative certificate is not yet
-  implemented or gated. It is the natural home for option 2 above and should be
-  built before that option is chosen.
+- The certificate halfwidth is a **delta-method approximation**, not a
+  distribution-free bound. With heavy inverse-propensity weights the sampling
+  distribution is skewed and the approximation understates the tail. It covered
+  the truth in 100% of seeds at every exploration level tested, but the
+  specification must not claim a distribution-free guarantee until one is
+  actually derived. `project.md` §2 currently does claim one; that wording is
+  ahead of the evidence.
 - Drift that moves faster than the evidence can track (≥4.0 logits) breaks the
   contribution entirely. The operating envelope is not characterised.
 - Strata are fixed and correct by construction here. A mis-specified partition —

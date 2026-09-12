@@ -26,7 +26,13 @@ class RunResult:
     patients: int = 0
     explore_spend: int = 0
     exhausted_days: int = 0
+    missed: int = 0                 # cases never referred -- the sim's truth
     offsets: list = field(default_factory=list)   # per-day snapshot, diagnostics
+
+    @property
+    def realised_fnr(self) -> float:
+        """Ground truth the certificate is trying to estimate."""
+        return self.missed / max(self.cases, 1)
 
     @property
     def recall(self) -> float:
@@ -55,6 +61,8 @@ def run(policy, days, delay: int, name: str = "") -> RunResult:
         for i in range(day.n):
             d = policy.decide(float(day.scores[i]), int(day.strata[i]),
                               float(day.times[i]))
+            if not d.refer:
+                res.missed += int(day.labels[i])
             if d.refer:
                 res.caught += int(day.labels[i])
                 res.spent += 1
@@ -129,4 +137,5 @@ def mean_result(results, name: str) -> RunResult:
     m.patients = int(round(np.mean([r.patients for r in results])))
     m.explore_spend = int(round(np.mean([r.explore_spend for r in results])))
     m.exhausted_days = int(round(np.mean([r.exhausted_days for r in results])))
+    m.missed = int(round(np.mean([r.missed for r in results])))
     return m

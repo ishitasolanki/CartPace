@@ -9,8 +9,7 @@ The gate conditions were written down before running anything:
   G2  under calm, CartPace loses no more than 1%
   G3  CartPace beats Fixed and Greedy in every scenario
   G4  exploration stays at or below 10% of cartridges
-  G5  (certificate bracketing -- deferred; the certificate is reported, not
-      yet gated, see docs/p2-findings.md)
+  G5  the false-negative certificate brackets the realised rate
 
 It also runs the ablation that answers the *second* question, which matters as
 much as the first: is the exploration that the claim rests on actually earning
@@ -131,6 +130,45 @@ def main():
         print(f"{ef:>13.3f}{pf:>10.4f}{cap.caught:>8}{cap.spent:>8}"
               f"{cap.explore_share * 100:>7.1f}%{d:>+12.2f}%")
 
+    # --- G5: the certificate, and what exploration actually buys ----------
+    print("\n=== certificate (ranking_drift) ===")
+    print("The offsets need no exploration. The certificate is a marginal")
+    print("quantity over never-referred patients, and cannot exist without it.\n")
+    print(f"{'p_floor':>9}{'expl_frac':>11}{'realised':>10}{'certified':>11}"
+          f"{'halfwidth':>11}{'covers':>8}{'usable':>8}")
+    g5_rows = []
+    for pf, ef in ((1e-12, 0.0), (0.002, 0.005), (0.01, 0.02), (0.02, 0.05)):
+        cfg = scenarios.get("ranking_drift")
+        real, cert, half, ident = [], [], [], []
+        for seed in range(SEEDS):
+            days = arrivals.make_days(cfg, N_DAYS, seed=seed)
+            c = CartPaceController(scenarios.N_STRATA,
+                                   np.random.default_rng(seed + 100),
+                                   p_floor=pf, explore_frac=ef)
+            metrics.run(c, days[:WARMUP], cfg.delay)
+            r = metrics.run(c, days[WARMUP:], cfg.delay)
+            f, h = c.certificate()
+            real.append(r.realised_fnr)
+            cert.append(f)
+            half.append(h)
+            ident.append(c.cert.identifiable)
+        ok = [not np.isnan(x) for x in cert]
+        cov = (100.0 * np.mean([abs(a - b) <= h for a, b, h, o
+                                in zip(cert, real, half, ok) if o])
+               if any(ok) else 0.0)
+        g5_rows.append((pf, ef, np.mean(real), np.nanmean(cert),
+                        np.nanmean(half), cov, all(ident)))
+        print(f"{pf:>9.4f}{ef:>11.3f}{100 * np.mean(real):>9.1f}%"
+              f"{100 * np.nanmean(cert):>10.1f}%{100 * np.nanmean(half):>10.1f}%"
+              f"{cov:>7.0f}%{str(all(ident)):>8}")
+
+    g5 = all(r[5] >= 80.0 for r in g5_rows if r[6])
+    blind = [r for r in g5_rows if not r[6]]
+    if blind:
+        print(f"\n  with no exploration the certificate reads "
+              f"{100 * blind[0][3]:.1f}% against a realised "
+              f"{100 * blind[0][2]:.1f}% -- flagged unusable, not reported.")
+
     # --- verdict ----------------------------------------------------------
     rd = summary["ranking_drift"]
     g1 = rd["delta"] >= 3.0 and rd["cap"].spent <= rd["pac"].spent * 1.02
@@ -149,6 +187,8 @@ def main():
           f"{'PASS' if g3 else 'FAIL'}")
     print(f"  G4 exploration <= 10% of cartridges                : "
           f"{'PASS' if g4 else 'FAIL'}")
+    print(f"  G5 certificate brackets the realised FNR           : "
+          f"{'PASS' if g5 else 'FAIL'}")
 
     best_ef = max(explore_rows, key=lambda r: r[2])
     exploration_pays = best_ef[0] > 0.0 or best_ef[1] > 1e-5
@@ -156,12 +196,14 @@ def main():
           f"{'YES' if exploration_pays else 'NO'}"
           f"  (best: explore_frac={best_ef[0]}, p_floor={best_ef[1]})")
 
-    verdict = "GO" if (g1 and g2 and g3 and g4) else "NO-GO"
+    verdict = "GO" if (g1 and g2 and g3 and g4 and g5) else "NO-GO"
     print(f"\nP2 VERDICT: {verdict}")
     if not exploration_pays:
-        print("QUALIFIED: the effect is real, but the exploration coupling -- "
-              "the one\nelement W0 found clear of prior art -- is not supported "
-              "by these numbers.\nSee docs/p2-findings.md.")
+        print("QUALIFIED: exploration is a net cost to CASES CAUGHT, so the "
+              "throughput\nframing of the claim is not supported. It is however "
+              "what makes the certificate exist at all -- G5 above shows it"
+              " reads\n0.0% against a realised 38% when switched off."
+              "\nSee docs/p2-findings.md.")
     return 0 if verdict == "GO" else 1
 
 

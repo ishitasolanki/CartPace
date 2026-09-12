@@ -33,6 +33,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from .budget import DAY_HOURS, BudgetPacer
+from .certificate import FNRCertificate
 from .explore import EXPLORE_FRAC, P_FLOOR, Explorer
 from .recalibrate import StratumCalibrator
 
@@ -83,6 +84,7 @@ class CartPaceController:
                                  n_prior=n_prior)
         self.explorer = Explorer(n_strata, explore_frac=explore_frac,
                                  p_floor=p_floor)
+        self.cert = FNRCertificate(p_floor=p_floor)
         self.budget_left = 0
         self.spent_today = 0
 
@@ -108,6 +110,7 @@ class CartPaceController:
     def observe_labels(self, batch) -> None:
         """Delayed confirmatory results. Each carries the propensity that
         produced its referral -- never one recomputed now."""
+        self.cert.observe(batch)
         if self.recalibrate:
             self.calib.update(batch)
 
@@ -152,8 +155,13 @@ class CartPaceController:
     def offsets(self) -> np.ndarray:
         return self.calib.offsets
 
+    def certificate(self) -> tuple[float, float]:
+        """Current false-negative estimate and halfwidth. Reported, never
+        enforced -- see the module docstring."""
+        return self.cert.estimate()
+
     @property
     def state_bytes(self) -> int:
         """Total controller state. Flat in patients seen -- the O(1) claim."""
         return (self.calib.state_bytes + self.pacer.state_bytes
-                + self.explorer.state_bytes + 4 * 8)
+                + self.explorer.state_bytes + self.cert.state_bytes + 4 * 8)
