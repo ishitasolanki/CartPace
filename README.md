@@ -1,8 +1,8 @@
-# CapTriage
+# CartPace
 
 Capacity-aware online controller for allocating a depleting point-of-care test consumable, with per-stratum recalibration learned from censored, delayed confirmatory feedback.
 
-A primary health centre screens ~200 people a day and holds ~40 GeneXpert cartridges. A fixed referral threshold either exhausts the cartridges by mid-morning — leaving afternoon arrivals unserved — or leaves them unused at close. CapTriage wraps any frozen screening model and sets the operating point online, under a hard budget, with no connectivity and no retraining.
+A primary health centre screens ~200 people a day and holds ~40 GeneXpert cartridges. A fixed referral threshold either exhausts the cartridges by mid-morning — leaving afternoon arrivals unserved — or leaves them unused at close. CartPace wraps any frozen screening model and sets the operating point online, under a hard budget, with no connectivity and no retraining.
 
 **Status: Phase 0 complete.** Requirements are fixed; no implementation yet.
 
@@ -12,7 +12,7 @@ Confirmatory labels come back days later and only for patients who were referred
 
 ## What is actually new
 
-The budget fixes *how many* referrals happen; the only remaining freedom is *which*. With a single monotone score there is none — unless the model's **ranking** is wrong for some subpopulation. CapTriage keeps one calibration offset per stratum, learned from propensity-weighted delayed labels, and paces the budget against the corrected score. It changes the composition of the referred set without changing its size.
+The budget fixes *how many* referrals happen; the only remaining freedom is *which*. With a single monotone score there is none — unless the model's **ranking** is wrong for some subpopulation. CartPace keeps one calibration offset per stratum, learned from propensity-weighted delayed labels, and paces the budget against the corrected score. It changes the composition of the referred set without changing its size.
 
 Making those offsets identifiable requires referring some patients below the threshold, and those referrals are paid for out of the same hard budget being optimised. That coupling is the contribution.
 
@@ -21,7 +21,7 @@ Making those offsets identifiable requires referring some patients below the thr
 | File | Contents |
 |---|---|
 | `project.md` | Requirements, objective, architecture, acceptance criteria, out-of-scope, riskiest assumptions |
-| `docs/CapTriage-Build-Specification.pdf` | Full build plan, Phase 0–13, each with an exit gate; patent strategy; risk register |
+| `docs/CartPace-Build-Specification.pdf` | Full build plan, Phase 0–13, each with an exit gate; patent strategy; risk register |
 | `docs/environment.md` | Verified toolchain versions |
 
 ## Setup

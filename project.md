@@ -1,10 +1,10 @@
-# CapTriage — project specification
+# CartPace — project specification
 
 **Capacity-aware online controller for TB screening under a hard cartridge budget, with per-stratum recalibration learned from censored, delayed confirmatory feedback.**
 
 Status: **Phase 0 — requirements.** Primary goal: India provisional patent application. Secondary goal: demo-quality full-stack web application (course deliverable).
 
-Build plan and phase gates: `docs/CapTriage-Build-Specification.pdf`.
+Build plan and phase gates: `docs/CartPace-Build-Specification.pdf`.
 
 ---
 
@@ -23,7 +23,7 @@ Three constraints make this hard, and all three are ignored by existing work:
 2. **Decisions are online and irreversible.** The patient is physically present. You decide now. You cannot recall them after seeing the rest of the day's cohort.
 3. **Feedback is censored and delayed.** Confirmatory results return days later, and *only for patients who were referred*. The system never directly observes what it missed.
 
-Constraint 3 is the deep one: a triage system that only ever sees labels for patients it referred cannot, by construction, measure its own false-negative rate.
+Constraint 3 is the deep one: an allocation system that only ever sees labels for patients it referred cannot, by construction, measure its own false-negative rate.
 
 ## 2. Objective
 
@@ -113,7 +113,7 @@ refer   = draw(p)  and  budget_left > 0
 
 | Role | Sees | Can do |
 |---|---|---|
-| `health_worker` | Live triage feed, per-patient decision and reason, patient history | Run the clinic day, record outcomes |
+| `health_worker` | Live decision feed, per-patient decision and reason, patient history | Run the clinic day, record outcomes |
 | `supervisor` | Everything above, plus baseline comparison and scenario controls | Set cartridge budget, configure scenarios, run comparisons, export results |
 
 ## 5. Functional requirements
@@ -290,9 +290,9 @@ Dependency direction is strictly one-way: `controller/` and `sim/` depend on num
 
 - [ ] AC1 — Budget invariant never violated across ≥100 seeded days, all scenarios
 - [ ] AC2 — Every logged decision carries a propensity in `(0, 1]`
-- [ ] AC3 — Under `ranking_drift`, CapTriage beats `ClockPacer` on cases at matched spend
-- [ ] AC4 — Under `calm`, CapTriage does not lose to `ClockPacer` by more than 1%
-- [ ] AC5 — CapTriage beats `Fixed` and `Greedy` in every scenario
+- [ ] AC3 — Under `ranking_drift`, CartPace beats `ClockPacer` on cases at matched spend
+- [ ] AC4 — Under `calm`, CartPace does not lose to `ClockPacer` by more than 1%
+- [ ] AC5 — CartPace beats `Fixed` and `Greedy` in every scenario
 - [ ] AC6 — Certified FNR brackets realised FNR in simulation
 - [ ] AC7 — Memory and latency flat from 1k → 100k decisions
 - [ ] AC8 — Zero-exploration collapse reproduces; ESS guard prevents it
@@ -304,7 +304,7 @@ Dependency direction is strictly one-way: `controller/` and `sim/` depend on num
 
 ## 19. Patent track
 
-Primary goal. India provisional, self-drafted. Full strategy in `docs/CapTriage-Build-Specification.pdf` chapter 16. Two rules that bind this repository:
+Primary goal. India provisional, self-drafted. Full strategy in `docs/CartPace-Build-Specification.pdf` chapter 16. Two rules that bind this repository:
 
 > **Section 3(i) drafting discipline.** The Indian Patents Act excludes processes for diagnostic treatment of human beings. Describe this system throughout — including in this repository's own documentation, which an examiner may read — as a **consumable-inventory and resource-allocation controller for a point-of-care testing device**. Never as a diagnostic, screening or triage method.
 
