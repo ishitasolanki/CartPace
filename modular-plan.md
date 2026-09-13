@@ -188,6 +188,16 @@ certificate numerator, identifiability flag.
 
 - **AC5 fails** in `calm` by 3 cases out of 3035. Relaxation is a project-owner
   decision, untaken.
+- **Fixed during W3.** `create_run` and `start_run` were gated to
+  `require_role("supervisor")`, contradicting `project.md` section 4, which
+  lists "run the clinic day" as a `health_worker` capability. Not caught in
+  W2 because the only test written (`test_health_worker_cannot_create_run`)
+  asserted the code's actual behaviour rather than the spec's. Caught building
+  the frontend, when "should the Live page let a nurse start a run" made the
+  mismatch impossible to miss. Both routes now require only `current_user`;
+  `require_role` stays in `deps.py` for the day a genuinely supervisor-only
+  mutation exists (budget/scenario control, out of scope for this cut per
+  `routes/config.py`).
 - The certificate halfwidth is a delta-method approximation, **not** a
   distribution-free bound. `project.md` was corrected to stop claiming one.
 - Drift beyond ~4 logits outruns what recalibration can track; the operating

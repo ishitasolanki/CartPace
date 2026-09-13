@@ -167,6 +167,27 @@ def test_compare_includes_the_mandatory_ablation(client):
     assert body["oracle"]["spent"] > 0
 
 
+def test_compare_includes_cartpace_itself(client):
+    """The comparison must show CartPace, not just its baselines -- a table
+    with every baseline except the policy actually being evaluated answers
+    the wrong question. CartPace's row is read from what the run actually
+    did (DayStat), not re-simulated, so it must match the run's own history."""
+    token = login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    run_id = run_to_completion(client, headers, n_days=30)
+
+    days = client.get(f"/api/runs/{run_id}/daystats", headers=headers).json()
+    expected_caught = sum(d["caught"] for d in days)
+    expected_spent = sum(d["spent"] for d in days)
+
+    r = client.get(f"/api/runs/{run_id}/compare", headers=headers)
+    body = r.json()
+    cartpace = next((p for p in body["policies"] if p["policy"] == "CartPace"), None)
+    assert cartpace is not None, "CartPace itself must appear in its own comparison"
+    assert cartpace["caught"] == expected_caught
+    assert cartpace["spent"] == expected_spent
+
+
 def test_compare_is_reproducible_for_the_same_run(client):
     """The comparison re-simulates baselines fresh on the run's seed; calling
     it twice must give identical numbers, not fresh randomness."""
@@ -197,3 +218,24 @@ def test_stats_endpoints_404_on_missing_run(client):
                       headers=headers).status_code == 404
     assert client.get("/api/runs/999999/compare",
                       headers=headers).status_code == 404
+
+
+def test_strata_history_covers_every_day_and_stratum(client):
+    token = login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    run_id = run_to_completion(client, headers, n_days=15)
+
+    from sim.scenarios import N_STRATA
+    r = client.get(f"/api/runs/{run_id}/strata/history", headers=headers)
+    assert r.status_code == 200
+    rows = r.json()
+    assert len(rows) == 15 * N_STRATA
+    assert {row["day"] for row in rows} == set(range(15))
+    assert {row["stratum"] for row in rows} == set(range(N_STRATA))
+
+
+def test_strata_history_404_on_missing_run(client):
+    token = login(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    r = client.get("/api/runs/999999/strata/history", headers=headers)
+    assert r.status_code == 404

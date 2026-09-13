@@ -85,8 +85,30 @@ def compare(run_id: int, db: Session = Depends(get_db), _=Depends(current_user))
                                              cfg.delay, "ClockPacer (ablation)"),
     }
     oracle = metrics.run_oracle(days)
+
+    # CartPace's own result for this run, read from what it actually did --
+    # not re-simulated. It is fully seeded and deterministic (the controller
+    # is built from np.random.default_rng(run.seed + 100) in engine.py, and
+    # nothing about a live WS broadcast affects the RNG draw sequence), so
+    # re-running it here would reproduce the identical numbers at the cost of
+    # a second full simulation. Omitting this row entirely was a real gap:
+    # the comparison table is meant to show CartPace against its baselines,
+    # and a table with every baseline except the one being evaluated answers
+    # the wrong question.
+    day_rows = db.query(DayStat).filter(DayStat.run_id == run_id).all()
+    caught = sum(d.caught for d in day_rows)
+    spent = sum(d.spent for d in day_rows)
+    cases = sum(d.cases for d in day_rows)
+    explore = sum(d.explore_spend for d in day_rows)
+    cartpace_row = {
+        "policy": "CartPace", "caught": caught, "spent": spent,
+        "recall": caught / cases if cases else 0.0,
+        "per_cartridge": caught / spent if spent else 0.0,
+        "explore_share": explore / spent if spent else 0.0,
+    }
+
     return {
-        "policies": [
+        "policies": [cartpace_row] + [
             {"policy": r.policy, "caught": r.caught, "spent": r.spent,
             "recall": r.recall, "per_cartridge": r.per_cartridge,
             "explore_share": r.explore_share}
@@ -95,3 +117,20 @@ def compare(run_id: int, db: Session = Depends(get_db), _=Depends(current_user))
         "oracle": {"policy": oracle.policy, "caught": oracle.caught,
                   "spent": oracle.spent},
     }
+
+
+@router.get("/{run_id}/strata/history")
+def strata_history(run_id: int, db: Session = Depends(get_db),
+                   _=Depends(current_user)):
+    """Every day's offsets for every stratum, in one call.
+
+    Backs the dashboard's offset-trajectory chart -- the mechanism made
+    visible. A day-by-day /strata?day=N loop would need one request per day
+    of the run (up to ~260), which is needless network overhead for data the
+    StrataState table already holds in full.
+    """
+    _get_run_or_404(db, run_id)
+    rows = (db.query(StrataState).filter(StrataState.run_id == run_id)
+           .order_by(StrataState.day, StrataState.stratum).all())
+    return [{"day": r.day, "stratum": r.stratum, "offset": r.offset,
+             "ess": r.ess} for r in rows]

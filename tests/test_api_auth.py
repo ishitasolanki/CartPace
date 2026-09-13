@@ -127,11 +127,17 @@ def test_me_succeeds_with_valid_token(client):
 # --- 403 wrong role -------------------------------------------------------
 
 
-def test_health_worker_cannot_create_run(client):
+def test_health_worker_can_create_run(client):
+    """project.md section 4: "Run the clinic day" is a health_worker
+    capability. An earlier cut of the API required supervisor for this,
+    which contradicted the spec -- fixed once the frontend build made the
+    mismatch obvious."""
     token = login(client, "nurse", "pw12345")
-    r = client.post("/api/runs", json={"scenario": "calm", "seed": 1},
+    r = client.post("/api/runs",
+                    json={"scenario": "calm", "seed": 1, "n_days": 5},
                     headers=auth(token))
-    assert r.status_code == 403
+    assert r.status_code == 201
+    assert r.json()["scenario"] == "calm"
 
 
 def test_supervisor_can_create_run(client):
@@ -144,7 +150,10 @@ def test_supervisor_can_create_run(client):
 
 
 def test_health_worker_can_list_runs(client):
-    """Reading is not supervisor-only -- only budget/scenario control is."""
+    """Reading is not supervisor-only -- only budget/scenario control is,
+    and this cut has no mutable budget/scenario route at all (see
+    routes/config.py), so nothing in the current API surface is actually
+    supervisor-exclusive."""
     token = login(client, "nurse", "pw12345")
     r = client.get("/api/runs", headers=auth(token))
     assert r.status_code == 200

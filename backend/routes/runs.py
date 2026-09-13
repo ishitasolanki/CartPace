@@ -8,7 +8,7 @@ from fastapi import (APIRouter, Depends, HTTPException, Query, WebSocket,
 from sqlalchemy.orm import Session
 
 from backend.db import SessionLocal, get_db
-from backend.deps import current_user, current_user_ws, require_role
+from backend.deps import current_user, current_user_ws
 from backend.engine import run_simulation
 from backend.models import Decision, Patient, Run, User
 from backend.schemas import DecisionOut, RunCreate, RunOut
@@ -20,7 +20,12 @@ manager = ConnectionManager()
 
 @router.post("", response_model=RunOut, status_code=status.HTTP_201_CREATED)
 def create_run(body: RunCreate, db: Session = Depends(get_db),
-               user: User = Depends(require_role("supervisor"))):
+               user: User = Depends(current_user)):
+    # project.md section 4: "Run the clinic day" is a health_worker
+    # capability, not a supervisor-only one. Supervisor-only in this cut is
+    # nothing at the data level -- PUT /api/config/budget was deliberately
+    # dropped (see routes/config.py) -- so there is currently no route that
+    # should actually require require_role("supervisor").
     try:
         body.validate_scenario()
     except ValueError as e:
@@ -48,7 +53,7 @@ def get_run(run_id: int, db: Session = Depends(get_db), _=Depends(current_user))
 
 @router.post("/{run_id}/start", status_code=status.HTTP_202_ACCEPTED)
 async def start_run(run_id: int, db: Session = Depends(get_db),
-                    _=Depends(require_role("supervisor"))):
+                    _=Depends(current_user)):
     run = db.get(Run, run_id)
     if run is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "run not found")
