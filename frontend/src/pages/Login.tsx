@@ -3,8 +3,11 @@ import type { FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ApiError } from "../lib/api";
 import { useAuth } from "../lib/AuthContext";
+import { usePageTitle } from "../lib/usePageTitle";
+import { Spinner } from "../components/Spinner";
 
 export function Login() {
+  usePageTitle("Sign in");
   const { login } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState("");
@@ -41,23 +44,33 @@ export function Login() {
           onSubmit={onSubmit}
           className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
         >
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="username"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
             Username
           </label>
           <input
-            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            id="username"
+            name="username"
+            className="mb-4 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-accent focus:ring-1 focus:ring-accent sm:text-sm"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="username"
             autoFocus
           />
 
-          <label className="mb-1 block text-sm font-medium text-slate-700">
+          <label
+            htmlFor="password"
+            className="mb-1 block text-sm font-medium text-slate-700"
+          >
             Password
           </label>
           <input
+            id="password"
+            name="password"
             type="password"
-            className="mb-5 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+            className="mb-5 w-full rounded-lg border border-slate-300 px-3 py-2 text-base outline-none focus:border-accent focus:ring-1 focus:ring-accent sm:text-sm"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
@@ -75,9 +88,10 @@ export function Login() {
           <button
             type="submit"
             disabled={busy || !username || !password}
-            className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="motion-safe:transition flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy ? "Signing in…" : "Sign in"}
+            {busy && <Spinner className="text-white" />}
+            Sign in
           </button>
         </form>
       </div>

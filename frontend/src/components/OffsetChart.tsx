@@ -26,15 +26,18 @@ import type { StratumHistoryPoint } from "../lib/types";
  * its own. This chart shows the one thing pacing cannot do.
  */
 
+// Okabe-Ito, the standard colorblind-safe qualitative palette (Web Interface
+// Guidelines: "Accessible charts (color-blind-friendly palettes)"). Yellow
+// sits last -- weakest contrast against a white chart background.
 const COLORS = [
-  "#0f6466",
-  "#c9a227",
-  "#7c5cbf",
-  "#2f7dd1",
-  "#d1495b",
-  "#3c9c6e",
-  "#b5651d",
-  "#5a6b8c",
+  "#0072B2", // blue
+  "#E69F00", // orange
+  "#009E73", // bluish green
+  "#CC79A7", // reddish purple
+  "#D55E00", // vermillion
+  "#56B4E9", // sky blue
+  "#F0E442", // yellow
+  "#000000", // black
 ];
 
 export function OffsetChart({

@@ -4,4 +4,6 @@
 
 body {
   @apply bg-slate-50 text-ink antialiased;
+  /* MUST: prevent double-tap zoom on touch devices (Web Interface Guidelines). */
+  touch-action: manipulation;
 }

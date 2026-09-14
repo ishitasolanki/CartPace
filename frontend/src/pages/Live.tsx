@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, ApiError } from "../lib/api";
 import { useWebSocket } from "../lib/useWebSocket";
+import { usePageTitle } from "../lib/usePageTitle";
 import type {
   CertificateOut,
   RunOut,
@@ -13,10 +15,19 @@ import { ExploreSplit } from "../components/ExploreSplit";
 import { FNRCertificate } from "../components/FNRCertificate";
 import { OffsetChart } from "../components/OffsetChart";
 import { PatientFeed } from "../components/PatientFeed";
+import { Spinner } from "../components/Spinner";
 import { N_STRATA } from "../lib/constants";
 import { computeExploreSplit } from "../lib/derive";
 
 type DecisionMsg = Extract<WsMessage, { type: "decision" }>;
+
+// The live feed shows recent activity, not a historical audit log -- the
+// full record is queryable via GET /api/runs/{id}/decisions. Capped well
+// under the Web Interface Guidelines' 50-item virtualization threshold so an
+// unbounded list is never rendered without either a cap or a virtualizer.
+const FEED_CAP = 60;
+
+const SCENARIOS = ["calm", "prevalence_drift", "ranking_drift", "shortage", "volatile"];
 
 function RunPicker({
   runs,
@@ -37,57 +48,73 @@ function RunPicker({
     <div className="grid gap-4 md:grid-cols-2">
       <div className="rounded-lg border border-slate-200 bg-white p-4">
         <h2 className="mb-3 text-sm font-semibold text-ink">Start a new run</h2>
-        <div className="space-y-3">
+        {/* A real <form> so Enter submits the focused field -- Web Interface
+            Guidelines: "Enter submits focused input". Plain divs with an
+            onClick button do not get that for free. */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            onCreate(scenario, seed, days);
+          }}
+          className="space-y-3"
+        >
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-500">
+            <label htmlFor="scenario" className="mb-1 block text-xs font-medium text-slate-500">
               Scenario
             </label>
             <select
+              id="scenario"
+              name="scenario"
               value={scenario}
               onChange={(e) => setScenario(e.target.value)}
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
             >
-              {["calm", "prevalence_drift", "ranking_drift", "shortage", "volatile"].map(
-                (s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ),
-              )}
+              {SCENARIOS.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
             </select>
           </div>
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500">
+              <label htmlFor="seed" className="mb-1 block text-xs font-medium text-slate-500">
                 Seed
               </label>
               <input
+                id="seed"
+                name="seed"
                 type="number"
+                inputMode="numeric"
                 value={seed}
                 onChange={(e) => setSeed(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
               />
             </div>
             <div className="flex-1">
-              <label className="mb-1 block text-xs font-medium text-slate-500">
+              <label htmlFor="days" className="mb-1 block text-xs font-medium text-slate-500">
                 Days
               </label>
               <input
+                id="days"
+                name="days"
                 type="number"
+                inputMode="numeric"
                 value={days}
                 onChange={(e) => setDays(Number(e.target.value))}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-base sm:text-sm"
               />
             </div>
           </div>
           <button
+            type="submit"
             disabled={busy}
-            onClick={() => onCreate(scenario, seed, days)}
-            className="w-full rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
+            className="motion-safe:transition flex w-full items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
           >
-            {busy ? "Starting…" : "Create and run"}
+            {busy && <Spinner className="text-white" />}
+            Create and run
           </button>
-        </div>
+        </form>
       </div>
 
       <div className="rounded-lg border border-slate-200 bg-white p-4">
@@ -131,6 +158,9 @@ function StatusPill({ status }: { status: RunOut["status"] }) {
 }
 
 export function Live() {
+  const { runId: runIdParam } = useParams();
+  const navigate = useNavigate();
+
   const [runs, setRuns] = useState<RunOut[]>([]);
   const [run, setRun] = useState<RunOut | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +174,8 @@ export function Live() {
   const [lastDay, setLastDay] = useState<{ day: number; budget: number; spent: number } | null>(null);
   const [cert, setCert] = useState<CertificateOut | null>(null);
   const [history, setHistory] = useState<StratumHistoryPoint[]>([]);
+
+  usePageTitle(run ? `Live — Run #${run.id}` : "Live");
 
   const wsRunId = run && (run.status === "running" || run.status === "pending")
     ? run.id
@@ -175,19 +207,54 @@ export function Live() {
     setHistory(h);
   }
 
+  // The URL is the source of truth for which run is open (Web Interface
+  // Guidelines: "URL reflects state"), so a refresh or a shared link lands
+  // back on the same run rather than the bare picker. `loadFromUrl` mirrors
+  // handleSelect's hydration but is driven by the param, not a click.
+  useEffect(() => {
+    if (!runIdParam) {
+      setRun(null);
+      return;
+    }
+    const id = Number(runIdParam);
+    if (!Number.isFinite(id)) {
+      navigate("/live", { replace: true });
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setError(null);
+      setFeed([]);
+      try {
+        const r = await api.getRun(id);
+        if (cancelled) return;
+        setRun(r);
+        await hydrate(id);
+        if (!cancelled && r.status === "pending") {
+          await api.startRun(id);
+          if (!cancelled) setRun({ ...r, status: "running" });
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err instanceof ApiError ? err.message : "Could not load that run.");
+          navigate("/live", { replace: true });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runIdParam]);
+
   async function handleCreate(scenario: string, seed: number, days: number) {
     setError(null);
     setBusy(true);
     try {
       const created = await api.createRun(scenario, seed, days);
-      setRun(created);
-      setFeed([]);
-      setLastDay(null);
-      setCert(null);
-      setHistory([]);
       await api.startRun(created.id);
-      setRun({ ...created, status: "running" });
       refreshRunList();
+      navigate(`/live/${created.id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not start the run.");
     } finally {
@@ -195,21 +262,9 @@ export function Live() {
     }
   }
 
-  async function handleSelect(id: number) {
-    setError(null);
-    const r = await api.getRun(id);
-    setRun(r);
-    setFeed([]);
-    await hydrate(id);
-    if (r.status === "pending") {
-      await api.startRun(id);
-      setRun({ ...r, status: "running" });
-    }
-  }
-
   function onMessage(msg: WsMessage) {
     if (msg.type === "decision") {
-      setFeed((f) => [msg, ...f].slice(0, 300));
+      setFeed((f) => [msg, ...f].slice(0, FEED_CAP));
     } else if (msg.type === "day_end") {
       setLastDay({ day: msg.day, budget: msg.budget, spent: msg.spent });
       setCert({
@@ -248,16 +303,21 @@ export function Live() {
   return (
     <div className="space-y-6">
       {error && (
-        <div className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
+        <div role="alert" className="rounded-lg bg-red-50 px-4 py-2 text-sm text-red-700">
           {error}
         </div>
       )}
 
       {!run ? (
-        <RunPicker runs={runs} onCreate={handleCreate} onSelect={handleSelect} busy={busy} />
+        <RunPicker
+          runs={runs}
+          onCreate={handleCreate}
+          onSelect={(id) => navigate(`/live/${id}`)}
+          busy={busy}
+        />
       ) : (
         <>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-3">
               <h1 className="text-lg font-semibold text-ink">
                 Run #{run.id} · {run.scenario} · seed {run.seed}
@@ -274,7 +334,7 @@ export function Live() {
               )}
             </div>
             <button
-              onClick={() => setRun(null)}
+              onClick={() => navigate("/live")}
               className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50"
             >
               ← Back to runs
