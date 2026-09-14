@@ -9,5 +9,9 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./src/test/setup.ts"],
+    // e2e/ is Playwright's, not Vitest's -- both tools default to a
+    // *.spec.ts glob, so without this exclusion Vitest tries to run
+    // Playwright tests in jsdom and fails on the missing `page` fixture.
+    exclude: ["e2e/**", "node_modules/**"],
   },
 })

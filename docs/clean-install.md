@@ -75,7 +75,36 @@ NFR2 per-decision latency bounded, in us  : PASS  (58.4 -> 76.2 us mean, 601.4 u
 AC7: PASS
 ```
 
+## Frontend, verified separately (2026-09-16)
+
+Same discipline: cloned fresh from `origin/main` into a temp path, not the
+working directory.
+
+```bash
+cd CartPace/frontend
+npm ci
+cp .env.example .env
+npx tsc --noEmit
+npm run build
+npm run test
+```
+
+| Step | Result |
+|---|---|
+| `npm ci` | 258 packages, 0 vulnerabilities |
+| `npx tsc --noEmit` | Clean |
+| `npm run build` | Succeeds, `dist/` produced |
+| `npm run test` | **16 passed** |
+
+No gap found this time — the design-pass commit's dependency additions
+(`react-router-dom` v7, `recharts` 3, Vitest 5, Testing Library) were already
+correctly recorded in `package.json`/`package-lock.json`, unlike the backend's
+earlier `httpx` miss. `npm ci` (not `npm install`) is what a clean clone
+should run — it installs exactly what the lockfile pins and fails loudly on
+drift, rather than silently resolving around it.
+
 ## Re-verification
 
-Re-run this whole procedure before any patent filing or graded submission,
-from a machine that has never held this project, and update the date above.
+Re-run this whole procedure — backend and frontend both — before any patent
+filing or graded submission, from a machine that has never held this project,
+and update the dates above.
